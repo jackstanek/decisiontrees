@@ -16,10 +16,18 @@ struct DNode<T: Ord> {
 
 impl<T: Ord> DTree<T> {}
 
-fn entropy_binary<F: Copy + Ord>(features: &[F], thresh: F) -> f64 {
-    let n_below = features.iter().filter(|x| *x < &thresh).count() as f64;
-    let n_above = features.len() as f64;
-    - (n_below * n_below.log2() + n_above * n_above.log2())
+/// Compute entropy of a
+fn entropy_binary<F: FeatureVector, L: Label>(
+    labeled_features: &[(F, L)],
+    idx: F::FeatureIdx,
+    thresh: F::Feature,
+) -> f64 {
+    let n_below = labeled_features
+        .iter()
+        .filter(|x| x.0.get_feature(idx) < thresh)
+        .count() as f64;
+    let n_above = labeled_features.len() as f64;
+    -(n_below * n_below.log2() + n_above * n_above.log2())
 }
 
 /// Calculate information entropy of a collection of feature vectors given a binary threshold
@@ -38,7 +46,7 @@ fn info_gain_ratio_binary<F: FeatureVector, L: Label>(
             });
 
     let mut cond_ent = 0.0;
-    for (lbl, fvecs) in by_label.iter() {
+    for fvecs in by_label.values() {
         let mut n_below = 0;
         let mut n_tot = 0;
         for fvec in fvecs.iter() {
@@ -49,7 +57,32 @@ fn info_gain_ratio_binary<F: FeatureVector, L: Label>(
         }
 
         let p_below = n_below as f64 / n_tot as f64;
-        cond_ent += -(p_below * p_below.log2())
+        cond_ent -= p_below * p_below.log2();
     }
-    todo!()
+    cond_ent / entropy_binary(features, idx, thresh)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::feature::{FeatureVector, Label};
+
+    use super::entropy_binary;
+
+    impl FeatureVector for f64 {
+        type Feature = f64;
+
+        type FeatureIdx = usize;
+
+        fn get_feature(&self, _: Self::FeatureIdx) -> Self::Feature {
+            *self
+        }
+    }
+
+    impl Label for i64 {}
+
+    #[test]
+    fn test_bernoulli_entropy() {
+        let test: Vec<(f64, i64)> = (1..=10).map(|x| (x as f64 / 10.0, 1)).collect();
+        assert_eq!(entropy_binary(&test, 0, 0.5), 0.5);
+    }
 }

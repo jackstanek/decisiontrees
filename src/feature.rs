@@ -1,7 +1,7 @@
 use std::hash::Hash;
 
 pub trait FeatureVector: Clone {
-    type Feature: Copy + Ord;
+    type Feature: Copy + PartialOrd;
     type FeatureIdx: Copy + Eq + PartialEq + Hash;
 
     fn get_feature(&self, idx: Self::FeatureIdx) -> Self::Feature;
@@ -10,7 +10,7 @@ pub trait FeatureVector: Clone {
 pub trait Label: Copy + Eq + Hash {}
 impl Label for u64 {}
 
-impl<T: Copy + Ord, U: Copy> FeatureVector for (T, T, U) {
+impl<T: Copy + PartialOrd, U: Copy> FeatureVector for (T, T, U) {
     type Feature = T;
     type FeatureIdx = TwoTupleIdx;
 
